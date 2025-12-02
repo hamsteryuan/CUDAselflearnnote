@@ -56,3 +56,25 @@ d_data 中的 d 前缀通常表示 "device"
 ## Stream
 Steam 是 CUDA 中的一个任务队列，用于管理在 GPU 上执行的操作序列。同一个流中的操作按顺序执行，但不同流之间可以并发执行。
 CUDA会有一个默认隐式流
+
+## 索引
+以一个计算线程在整个网格中的全局位置的表达式为例
+```
+int idx = blockIdx.x * blockDim.x + threadIdx.x;
+```
+
+**含义**：计算线程在整个网格中的全局位置
+每个线程需要知道自己应该处理数据的哪一部分
+- `blockIdx.x`: 当前块的编号（第几个块）
+- `blockDim.x`: 每个块有多少个线程
+- `threadIdx.x`: 线程在当前块内的编号
+- `blockIdx.x * blockDim.x`: 前面所有块的线程总数
+
+
+**举例**：
+```
+假设: blockDim.x = 256（每块256个线程）
+
+Block 0: threadIdx.x = 0,1,2...255  → 全局 idx = 0,1,2...255
+Block 1: threadIdx.x = 0,1,2...255  → 全局 idx = 256,257,258...511
+Block 2: threadIdx.x = 0,1,2...255  → 全局 idx = 512,513,514...767
