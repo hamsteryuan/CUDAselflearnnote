@@ -24,5 +24,4 @@ cudaFree(d_data);
 cudaDeviceSynchronize(); 
 
 // 等待特定流完成
-cudaStreamSynchronize(stream); //关于什么是流，见basic.md
-###
+cudaStreamSynchronize(stream);
