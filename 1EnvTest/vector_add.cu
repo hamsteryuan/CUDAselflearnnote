@@ -15,9 +15,9 @@ int main()
     // Launch 1 block of 10 threads
     simpleAdd<<<1, 10>>>();
 
-    // Wait for GPU to finish 
+    // // Wait for GPU to finish 
     cudaDeviceSynchronize();
-
+    //if not add this line, the following printf can execute before GPU kernel finishes,causing problems in real engineering applications.
     printf("Back to CPU\n");
     return 0;
 }

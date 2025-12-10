@@ -1,6 +1,7 @@
-﻿## cuda一些基本概念和事情
+﻿# cuda一些基本概念
 
 ## GPU层级
+SM:Streaming Multiprocessor
 SM vs 线程块 vs 线程：层级关系
 GPU > SM > 线程块 > 线程（每级都是包含多个）
 SM是硬件执行单元
@@ -17,7 +18,7 @@ GPU调度器以线程块为单位将工作分配给SM，而不是单个线程。
 chcp 65001  文件用utf-8编码
 * 中文标点符号似乎依旧乱码
 一些中文注释会出乱码warning，不影响实际结果
-# 编译后的lib与exp文件
+## 编译后的lib与exp文件
 ```
 nvcc StreamShow.cu -o StreamShow
 tmpxft_00008550_00000000-10_StreamShow.cudafe1.cpp
@@ -35,11 +36,13 @@ kernelFunction  需要接 \__global__ 定义
 2.Block维度:指定每个Block中有多少个线程（Thread）
 3. 共享内存大小:动态分配的共享内存大小
 动态分配的共享内存是指在核函数启动时才确定大小的共享内存，而不是在编译时固定。
-**从共享内存读取比全局内存快得多（GPU显存芯片整体使用，GB级别）**
+**从共享内存读取比全局内存快一个数量级（全局内存指的就是GPU显存，GB级别）**
 这是每个线程块的固定分配大小，不是上限
 4. stream: 指定在哪个CUDA流上执行用于异步执行，不同流可以同时执行
+
+**Steam 是 CUDA 中的一个任务队列，用于管理在 GPU 上执行的操作序列。同一个流中的操作按顺序执行，但不同流之间可以并发执行。CUDA会有一个默认隐式流**
 ## 同步操作 
-上文说了，kernel是异步执行，如果要同步（等一下GPU的执行完成），可以由以下方法
+上文说了，kernel是异步执行，如果要同步（等一下GPU的执行完成），[可见codeRuntime.md文件](./codeRuntime.md)
 ## Host---Device指代
 主机（Host）
 
@@ -53,9 +56,6 @@ h_data 中的 h 前缀通常表示 "host"
 运行 CUDA 核函数（__global__ 函数）
 d_data 中的 d 前缀通常表示 "device"
 
-## Stream
-Steam 是 CUDA 中的一个任务队列，用于管理在 GPU 上执行的操作序列。同一个流中的操作按顺序执行，但不同流之间可以并发执行。
-CUDA会有一个默认隐式流
 
 ## 索引
 以一个计算线程在整个网格中的全局位置的表达式为例

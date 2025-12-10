@@ -5,17 +5,20 @@
 #define BLOCK_SIZE 256
 #define ARRAY_SIZE 1024
 
+// 核心逻辑：全局内存 → 共享内存 → 计算 → 写回全局内存
+
 // CUDA kernel using shared memory for array addition
 __global__ void addArraysSharedMem(float* a, float* b, float* c, int n) {
     // Shared memory allocation
+    //这里的共享内存自带默认的共享范围（仅同一个block内的线程可见），因此执行这个函数的时候自动会设定好其范围
     __shared__ float shared_a[BLOCK_SIZE];
     __shared__ float shared_b[BLOCK_SIZE];
     
-    int tid = threadIdx.x;
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int tid = threadIdx.x; //线程在block里的局部索引
+    int idx = blockIdx.x * blockDim.x + threadIdx.x; //线程的全局索引
     
-    // Load data into shared memory
-    if (idx < n) { （重要！！！一定加越界判断）
+    //全局-----共享的映射
+    if (idx < n) { //safe deed
         shared_a[tid] = a[idx];
         shared_b[tid] = b[idx];
     } else {
@@ -23,11 +26,11 @@ __global__ void addArraysSharedMem(float* a, float* b, float* c, int n) {
         shared_b[tid] = 0.0f;
     }
     
-    // Synchronize threads in the block
+    // Synchronize threads in the block to make sure all threads are written
     __syncthreads();
     
-    // Perform computation using shared memory
-    //使用：每个线程用共享内存中的数据做加法（快）
+    //共享计算结果又回到全局
+
     if (idx < n) {
         c[idx] = shared_a[tid] + shared_b[tid];
     }
@@ -59,6 +62,11 @@ int main() {
     
     size_t bytes = ARRAY_SIZE * sizeof(float);
     
+    // Create CUDA events for timing
+    cudaEvent_t start, stop;
+    CHECK_CUDA_ERROR(cudaEventCreate(&start));
+    CHECK_CUDA_ERROR(cudaEventCreate(&stop));
+    
     // 1. Allocate host memory
     h_a = (float*)malloc(bytes);
     h_b = (float*)malloc(bytes);
@@ -71,11 +79,12 @@ int main() {
     }
     
     // 2. Allocate device memory
+    //类似cpu逻辑，GPU也可也分配内存，这里是在分配全局内存
     CHECK_CUDA_ERROR(cudaMalloc(&d_a, bytes));
     CHECK_CUDA_ERROR(cudaMalloc(&d_b, bytes));
     CHECK_CUDA_ERROR(cudaMalloc(&d_c, bytes));
     
-    // 3. Copy data from host to device
+    // 3. Copy data from host to device （主机内存--->GPU全局内存）
     printf("Copying data from host to device...\n");
     CHECK_CUDA_ERROR(cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice));
     CHECK_CUDA_ERROR(cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice));
@@ -86,6 +95,14 @@ int main() {
     
     printf("Launching kernel with shared memory...\n");
     addArraysSharedMem<<<gridSize, blockSize>>>(d_a, d_b, d_c, ARRAY_SIZE);
+    /*
+    4 个线程块的具体工作
+    Block ID	线程范围	处理的全局数据索引
+    Block 0	0-255	a[0-255], b[0-255]
+    Block 1	256-511	a[256-511], b[256-511]
+    Block 2	512-767	a[512-767], b[512-767]
+    Block 3	768-1023	a[768-1023], b[768-1023]
+    */
     CHECK_CUDA_ERROR(cudaGetLastError());
     CHECK_CUDA_ERROR(cudaDeviceSynchronize());
     
@@ -112,6 +129,8 @@ int main() {
         printf("\n");
     }
     
+   
+    
     // 7. Demonstrate different memory types
     printf("\n=== Memory Information ===\n");
     
@@ -129,6 +148,9 @@ int main() {
     }
     
     // 8. Clean up memory
+    CHECK_CUDA_ERROR(cudaEventDestroy(start));
+    CHECK_CUDA_ERROR(cudaEventDestroy(stop));
+    
     free(h_a);
     free(h_b);
     free(h_c);
