@@ -19,7 +19,14 @@ __global__ void transposeSimple(float* input, float* output, int n) {
     }
 }
 
-// 共享内存版本：使用tile来优化内存访问模式
+// 共享内存版本：使用tile
+/*
+
+阶段	操作	访问模式
+读取	input[y*n+x]	连续地址，合并访问✅
+写出	output[y*n+x]	连续地址，合并访问✅
+转置	tile[x][y]	在共享内存完成，超快⚡
+*/
 __global__ void transposeSharedMem(float* input, float* output, int n) {
     __shared__ float tile[TILE_SIZE][TILE_SIZE + 1]; // +1 避免bank conflict
     
